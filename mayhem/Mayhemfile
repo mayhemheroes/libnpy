@@ -1,0 +1,6 @@
+project: libnpy
+target: header-fuzz
+
+cmds:
+  - cmd: /fuzz_parse_header
+    libfuzzer: true
