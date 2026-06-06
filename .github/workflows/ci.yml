@@ -13,9 +13,9 @@ jobs:
     name: Formatting Check
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v3
+    - uses: actions/checkout@v6
     - name: Run clang-format style check for C++ sources.
-      uses: jidicula/clang-format-action@v4.11.0
+      uses: jidicula/clang-format-action@v4.18.0
       with:
         clang-format-version: '16'
 
@@ -25,8 +25,8 @@ jobs:
       run:
         working-directory: ./tests
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-python@v4
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
         with:
           python-version: '3.x'
       - run: pip install meson ninja
@@ -35,7 +35,7 @@ jobs:
           CC: gcc
       - run: pip install numpy
       - run: meson test -C builddir/ -v
-      - uses: actions/upload-artifact@v3
+      - uses: actions/upload-artifact@v4
         if: failure()
         with:
           name: Linux_Meson_Testlog
