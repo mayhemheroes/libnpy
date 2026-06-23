@@ -31,6 +31,7 @@
 #include <fstream>
 #include <iostream>
 #include <iterator>
+#include <limits>
 #include <sstream>
 #include <stdexcept>
 #include <string>
@@ -445,6 +446,15 @@ inline std::string read_header(std::istream &istream) {
     throw std::runtime_error("unsupported file format version");
   }
 
+  // Bound the attacker-controlled header_length before allocating: a crafted .npy can
+  // declare header_length up to 4 GiB (v2 u32), forcing a huge allocation (DoS). The cap
+  // is generous (well above any real header, which is at most a few hundred KB even for
+  // large structured dtypes) so legitimate v1 and v2 files are unaffected; tune as needed.
+  static const uint32_t max_header_length = 16u * 1024u * 1024u;
+  if (header_length > max_header_length) {
+    throw std::runtime_error("invalid file format: header_length exceeds maximum");
+  }
+
   auto buf_v = std::vector<char>(header_length);
   istream.read(buf_v.data(), header_length);
   std::string header(buf_v.data(), header_length);
@@ -454,7 +464,13 @@ inline std::string read_header(std::istream &istream) {
 
 inline ndarray_len_t comp_size(const shape_t &shape) {
   ndarray_len_t size = 1;
-  for (ndarray_len_t i : shape) size *= i;
+  for (ndarray_len_t i : shape) {
+    // Reject overflow of the shape product (CWE-190): a wrapped product yields a
+    // silent undersized buffer or a giant allocation downstream.
+    if (i != 0 && size > std::numeric_limits<ndarray_len_t>::max() / i)
+      throw std::runtime_error("invalid file format: shape product overflow");
+    size *= i;
+  }
 
   return size;
 }
